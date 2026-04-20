@@ -82,31 +82,58 @@ make -C "$BUILDROOT" O="$OUTPUT"
 
 ### Offline build (no internet required after clone)
 
-The repo contains everything needed to build on a machine without access to Intel/GitHub
-sources. Standard Buildroot packages (linux kernel, gcc, glibc, opencv4, etc.) are
-downloaded automatically from `sources.buildroot.net` during the build.
+A fully offline build requires two things: the git repository and a tarball of
+standard Buildroot package downloads. Both travel separately because the standard
+downloads (linux kernel, gcc, glibc, opencv4, etc.) are too large to commit to git.
 
-The non-standard pre-built Intel binaries that cannot be fetched from standard mirrors
-are committed directly to the repo under `buildroot-2024.02.9/dl/`:
+**What is in git** — the 4 non-standard Intel binary downloads that cannot be fetched
+from standard mirrors:
 
-| Directory | Contents | Source (not accessible offline) |
-|---|---|---|
-| `dl/intel-compute-runtime/` | OpenCL ICD, Level Zero, IGC, ocl-icd debs | GitHub / Ubuntu archive |
-| `dl/intel-ipp/` | Intel IPP 2022.3 debs | Intel oneAPI apt repo |
-| `dl/openvino-runtime/` | OpenVINO 2024.4 toolkit tgz | Intel storage |
-| `dl/openvino-demo/` | `person-detection-retail-0013.xml` + `.bin` | Intel OpenVINO storage |
+| Directory | Contents |
+|---|---|
+| `dl/intel-compute-runtime/` | OpenCL ICD, Level Zero, IGC, ocl-icd debs |
+| `dl/intel-ipp/` | Intel IPP 2022.3 debs |
+| `dl/openvino-runtime/` | OpenVINO 2024.4 toolkit tgz |
+| `dl/openvino-demo/` | `person-detection-retail-0013.xml` + `.bin` |
 
-To build on an offline machine:
+**What travels as `standard_dl.tar.gz`** — the ~60 standard Buildroot package
+downloads (~830 MB). This file is **not** in git; keep it alongside the repo on the
+USB drive or shared storage.
+
+#### Preparing the offline bundle (online machine, one-time)
 
 ```bash
-# 1. Transfer the repo via USB from an online machine
-#    (on online machine)
-git clone /path/to/br_2024/ /path/to/usb/br_2024/
+cd /path/to/br_2024/
 
-# 2. On the offline machine — copy from USB and build
-cp -a /path/to/usb/br_2024/ ~/br_2024/
+# Download all standard packages into a clean output dir
+make -C buildroot-2024.02.9 \
+     O=/tmp/br_source_only \
+     BR2_EXTERNAL="$(pwd)/br2-external" \
+     BR2_DL_DIR="$(pwd)/buildroot-2024.02.9/dl" \
+     up7000_defconfig source
+
+# Create the tarball (excludes the 4 non-standard dirs already in git)
+cd buildroot-2024.02.9/dl
+tar czf /path/to/standard_dl.tar.gz \
+    $(ls -d */ | grep -vE '^(intel-compute-runtime|intel-ipp|openvino-runtime|openvino-demo)/$')
+```
+
+The resulting `standard_dl.tar.gz` is ~830 MB. Copy it alongside the git clone onto
+the USB drive.
+
+#### Building on the offline machine
+
+```bash
+# 1. Clone the repo from USB (or copy the directory)
+git clone /path/to/usb/br_2024/ ~/br_2024/
 cd ~/br_2024/
 
+# 2. Extract standard downloads into the dl/ directory
+cd buildroot-2024.02.9/dl
+tar xzf /path/to/standard_dl.tar.gz
+cd ../..
+
+# 3. Configure and build (no network access needed)
 mkdir output
 make -C buildroot-2024.02.9 O="$(pwd)/output" BR2_EXTERNAL="$(pwd)/br2-external" up7000_defconfig
 make -C buildroot-2024.02.9 O="$(pwd)/output"
@@ -114,6 +141,10 @@ make -C buildroot-2024.02.9 O="$(pwd)/output"
 
 > The `up7000_defconfig` step is required on each new machine — it regenerates
 > `output/.config` with correct absolute paths for that machine.
+
+> To verify no network access is used during build, run make under a network namespace:
+> `sudo unshare --net -- make -C buildroot-2024.02.9 O="$(pwd)/output"`
+> Any missing download will fail immediately (no internet) rather than silently downloading.
 
 ### Files that matter
 
