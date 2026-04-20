@@ -1,0 +1,4 @@
+# Locally computed SHA256 checksums for Intel IPP 2022.3.1-7 .deb packages.
+# Source: https://apt.repos.intel.com/oneapi/dists/all/main/binary-amd64/Packages
+sha256  89c0d1ce9aac145a6e949678c17296c57ee233ff10f4443019c32fe5db5b7569  intel-oneapi-ipp-2022.3-2022.3.1-7_amd64.deb
+sha256  ebdf865d359c030ce177fbbd916e6813ed7024bce37f680c33eff64c29d90708  intel-oneapi-ipp-devel-2022.3-2022.3.1-7_amd64.deb

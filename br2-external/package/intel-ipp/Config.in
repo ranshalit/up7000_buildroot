@@ -1,0 +1,18 @@
+config BR2_PACKAGE_INTEL_IPP
+	bool "intel-ipp"
+	depends on BR2_x86_64
+	depends on BR2_TOOLCHAIN_USES_GLIBC
+	help
+	  Intel Integrated Performance Primitives (IPP) — a multi-threaded
+	  library of signal processing, image processing, data compression,
+	  and math functions optimised for Intel CPUs.
+
+	  Installs the pre-built x86_64 runtime shared libraries to the
+	  target and, for the SDK, also installs headers, CMake config
+	  (IPPConfig.cmake), and static libraries to staging.
+
+	  https://www.intel.com/content/www/us/en/developer/tools/oneapi/ipp.html
+
+comment "intel-ipp requires a glibc toolchain and x86_64"
+	depends on BR2_x86_64
+	depends on !BR2_TOOLCHAIN_USES_GLIBC

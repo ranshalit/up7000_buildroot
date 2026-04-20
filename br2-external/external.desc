@@ -1,2 +1,2 @@
 name: UP7000_EXTRAS
-desc: UP7000 extra packages: OpenVINO runtime, Intel compute runtime, and detection demo
+desc: UP7000 extra packages: OpenVINO runtime, Intel compute runtime, Intel IPP, and detection demo
