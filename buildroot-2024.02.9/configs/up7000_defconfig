@@ -1,0 +1,72 @@
+# UP7000 Buildroot defconfig
+# Target: Intel UP7000 (Alder Lake-N, x86_64), UEFI GRUB2, BusyBox init, GPT image
+# Kernel: Linux 6.6.63 LTS
+# Usage: make O=../output up7000_defconfig
+
+# Architecture
+BR2_x86_64=y
+
+# Toolchain: musl is fine with BusyBox init and smaller than glibc
+BR2_TOOLCHAIN_BUILDROOT_MUSL=y
+BR2_TOOLCHAIN_BUILDROOT_CXX=y
+# Kernel headers version must match (or be ≤) the kernel we build
+BR2_KERNEL_HEADERS_6_6=y
+
+# Parallel build: 0 = auto-detect nproc
+BR2_JLEVEL=0
+
+# ─── Linux Kernel ───────────────────────────────────────────────────────────
+BR2_LINUX_KERNEL=y
+BR2_LINUX_KERNEL_CUSTOM_VERSION=y
+BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE="6.6.63"
+# Use our kernel config fragment applied on top of x86_64_defconfig
+BR2_LINUX_KERNEL_USE_CUSTOM_CONFIG=y
+BR2_LINUX_KERNEL_CUSTOM_CONFIG_FILE="board/up7000/linux.config"
+BR2_LINUX_KERNEL_BZIMAGE=y
+BR2_LINUX_KERNEL_NEEDS_HOST_OPENSSL=y
+
+# ─── Bootloader: GRUB2 EFI (64-bit) ────────────────────────────────────────
+BR2_TARGET_GRUB2=y
+BR2_TARGET_GRUB2_X86_64_EFI=y
+BR2_TARGET_GRUB2_CFG_FILE="board/up7000/grub.cfg"
+BR2_TARGET_GRUB2_BUILTIN_MODULES_EFI="boot linux ext2 fat part_msdos part_gpt normal"
+
+# ─── Root filesystem: ext4 ──────────────────────────────────────────────────
+BR2_TARGET_ROOTFS_EXT2=y
+BR2_TARGET_ROOTFS_EXT2_4=y
+BR2_TARGET_ROOTFS_EXT2_LABEL="rootfs"
+BR2_TARGET_ROOTFS_EXT2_SIZE="512M"
+
+# ─── Post-build and post-image hooks ────────────────────────────────────────
+BR2_ROOTFS_POST_BUILD_SCRIPT="board/up7000/post-build.sh"
+BR2_ROOTFS_POST_IMAGE_SCRIPT="board/up7000/post-image.sh"
+
+# ─── Rootfs overlay (network config, etc.) ──────────────────────────────────
+BR2_ROOTFS_OVERLAY="board/up7000/rootfs-overlay"
+
+# ─── Init system: BusyBox (simple, proven to work on UP7000) ────────────────
+BR2_INIT_BUSYBOX=y
+
+# ─── System configuration ───────────────────────────────────────────────────
+BR2_TARGET_GENERIC_HOSTNAME="up7000"
+BR2_TARGET_GENERIC_ISSUE="Welcome to UP7000 Buildroot"
+BR2_TARGET_GENERIC_ROOT_PASSWD="root"
+BR2_TARGET_GENERIC_GETTY=y
+BR2_TARGET_GENERIC_GETTY_PORT="ttyS0"
+BR2_TARGET_GENERIC_GETTY_BAUDRATE_115200=y
+BR2_TARGET_TZ_INFO=y
+BR2_TARGET_LOCALTIME="UTC"
+
+# ─── Network packages ───────────────────────────────────────────────────────
+BR2_PACKAGE_IFUPDOWN_SCRIPTS=y
+BR2_PACKAGE_OPENSSH=y
+BR2_PACKAGE_IPROUTE2=y
+BR2_PACKAGE_IPUTILS=y
+
+# ─── Useful debug tools ─────────────────────────────────────────────────────
+BR2_PACKAGE_HTOP=y
+BR2_PACKAGE_NANO=y
+BR2_PACKAGE_STRACE=y
+
+# Host genimage tool (required by post-image.sh to create GPT disk image)
+BR2_PACKAGE_HOST_GENIMAGE=y

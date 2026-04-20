@@ -1,0 +1,4 @@
+PermitRootLogin yes
+PermitEmptyPasswords yes
+UsePAM no
+Subsystem sftp /usr/lib/sftp-server

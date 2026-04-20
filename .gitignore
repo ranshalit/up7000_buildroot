@@ -1,0 +1,21 @@
+# Track only the curated source/docs set for this workspace.
+/*
+!/.gitignore
+!/README.md
+
+!/docs/
+/docs/*
+!/docs/*.md
+!/docs/*.txt
+
+!/buildroot-2024.02.9/
+/buildroot-2024.02.9/*
+
+!/buildroot-2024.02.9/configs/
+/buildroot-2024.02.9/configs/*
+!/buildroot-2024.02.9/configs/up7000_defconfig
+
+!/buildroot-2024.02.9/board/
+/buildroot-2024.02.9/board/*
+!/buildroot-2024.02.9/board/up7000/
+!/buildroot-2024.02.9/board/up7000/**
