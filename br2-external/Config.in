@@ -1,0 +1,3 @@
+source "$BR2_EXTERNAL_UP7000_EXTRAS_PATH/package/openvino-runtime/Config.in"
+source "$BR2_EXTERNAL_UP7000_EXTRAS_PATH/package/intel-compute-runtime/Config.in"
+source "$BR2_EXTERNAL_UP7000_EXTRAS_PATH/package/openvino-demo/Config.in"

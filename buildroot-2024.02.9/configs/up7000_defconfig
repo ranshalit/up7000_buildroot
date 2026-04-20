@@ -6,8 +6,8 @@
 # Architecture
 BR2_x86_64=y
 
-# Toolchain: musl is fine with BusyBox init and smaller than glibc
-BR2_TOOLCHAIN_BUILDROOT_MUSL=y
+# Toolchain: glibc required by OpenVINO pre-built runtime binaries
+BR2_TOOLCHAIN_BUILDROOT_GLIBC=y
 BR2_TOOLCHAIN_BUILDROOT_CXX=y
 # Kernel headers version must match (or be ≤) the kernel we build
 BR2_KERNEL_HEADERS_6_6=y
@@ -35,7 +35,7 @@ BR2_TARGET_GRUB2_BUILTIN_MODULES_EFI="boot linux ext2 fat part_msdos part_gpt no
 BR2_TARGET_ROOTFS_EXT2=y
 BR2_TARGET_ROOTFS_EXT2_4=y
 BR2_TARGET_ROOTFS_EXT2_LABEL="rootfs"
-BR2_TARGET_ROOTFS_EXT2_SIZE="512M"
+BR2_TARGET_ROOTFS_EXT2_SIZE="2048M"
 
 # ─── Post-build and post-image hooks ────────────────────────────────────────
 BR2_ROOTFS_POST_BUILD_SCRIPT="board/up7000/post-build.sh"
@@ -74,3 +74,21 @@ BR2_PACKAGE_STRACE=y
 
 # Host genimage tool (required by post-image.sh to create GPT disk image)
 BR2_PACKAGE_HOST_GENIMAGE=y
+
+# ─── BR2_EXTERNAL: UP7000 extras (OpenVINO, Intel GPU runtime, demo) ─────────
+# Pass BR2_EXTERNAL="$(TOPDIR)/../br2-external" on the make command line;
+# the path below is stored here only for reference.
+# BR2_EXTERNAL="/path/to/br2-external"
+
+# ─── OpenVINO & Intel GPU compute runtime ────────────────────────────────────
+BR2_PACKAGE_TBB=y
+BR2_PACKAGE_OPENCV4=y
+BR2_PACKAGE_OPENCV4_LIB_IMGPROC=y
+BR2_PACKAGE_OPENCV4_LIB_IMGCODECS=y
+BR2_PACKAGE_OPENCV4_WITH_JPEG=y
+BR2_PACKAGE_OPENCV4_WITH_PNG=y
+BR2_PACKAGE_INTEL_GMMLIB=y
+BR2_PACKAGE_LINUX_FIRMWARE_I915=y
+BR2_PACKAGE_OPENVINO_RUNTIME=y
+BR2_PACKAGE_INTEL_COMPUTE_RUNTIME=y
+BR2_PACKAGE_OPENVINO_DEMO=y

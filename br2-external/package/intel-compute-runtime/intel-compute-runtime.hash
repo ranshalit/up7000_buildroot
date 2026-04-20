@@ -1,0 +1,5 @@
+sha256  6afecb022cc1e0bf12617eecce02e6a83d4122a2b2ea1d6344b718eb9f03e463  intel-opencl-icd_24.26.30049.6_amd64.deb
+sha256  7d4c2c8967676dc05da923ba4a7d6edafce6a6df64b41cb2f04e3267811c762c  intel-level-zero-gpu_1.3.30049.6_amd64.deb
+sha256  98012c235ca1a8c953bc847eaf92d061e84a0f0c67a94b9375fcbb5f1a9ae8c0  intel-igc-core_1.0.17193.4_amd64.deb
+sha256  020d9ea61a27f0d86a2665ca56ee6f4695ddee02579b6d636995cd19f9e96ba1  intel-igc-opencl_1.0.17193.4_amd64.deb
+sha256  9c4ecdb6b69f10157796f4eef6ead8f4f42532f9064ccf1e80f9b337719370a9  ocl-icd-libopencl1_2.2.14-3_amd64.deb

@@ -1,0 +1,25 @@
+config BR2_PACKAGE_OPENVINO_DEMO
+	bool "openvino-demo"
+	depends on BR2_x86_64
+	depends on BR2_TOOLCHAIN_USES_GLIBC
+	depends on BR2_INSTALL_LIBSTDCPP
+	select BR2_PACKAGE_OPENVINO_RUNTIME
+	select BR2_PACKAGE_OPENCV4
+	select BR2_PACKAGE_OPENCV4_LIB_IMGPROC
+	select BR2_PACKAGE_OPENCV4_LIB_IMGCODECS
+	select BR2_PACKAGE_OPENCV4_WITH_JPEG
+	select BR2_PACKAGE_OPENCV4_WITH_PNG
+	help
+	  Object-detection demo using OpenVINO C++ API and YOLOv8n (ONNX).
+
+	  Installs:
+	    /usr/bin/openvino-detect          - demo binary
+	    /usr/share/openvino-demo/models/  - YOLOv8n ONNX model
+	    /usr/share/openvino-demo/images/  - sample JPEG images
+
+	  Usage:
+	    openvino-detect [--device CPU|GPU] [image1.jpg ...]
+	  Output annotated images are written to /tmp/ov-demo-out/.
+
+comment "openvino-demo requires a glibc toolchain, x86_64, and C++ support"
+	depends on !BR2_x86_64 || !BR2_TOOLCHAIN_USES_GLIBC || !BR2_INSTALL_LIBSTDCPP

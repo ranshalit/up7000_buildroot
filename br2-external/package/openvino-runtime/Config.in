@@ -1,0 +1,17 @@
+config BR2_PACKAGE_OPENVINO_RUNTIME
+	bool "openvino-runtime"
+	depends on BR2_x86_64
+	depends on BR2_TOOLCHAIN_USES_GLIBC
+	select BR2_PACKAGE_TBB
+	help
+	  Intel OpenVINO Toolkit runtime libraries (CPU + GPU inference
+	  plugins, ONNX/IR/PaddlePaddle frontends).
+
+	  This installs the pre-built x86_64 Linux runtime from Intel's
+	  official release archive.
+
+	  https://github.com/openvinotoolkit/openvino
+
+comment "openvino-runtime requires a glibc toolchain and x86_64"
+	depends on BR2_x86_64
+	depends on !BR2_TOOLCHAIN_USES_GLIBC

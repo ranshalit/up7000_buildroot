@@ -1,0 +1,21 @@
+config BR2_PACKAGE_INTEL_COMPUTE_RUNTIME
+	bool "intel-compute-runtime"
+	depends on BR2_x86_64
+	depends on BR2_TOOLCHAIN_USES_GLIBC
+	select BR2_PACKAGE_INTEL_GMMLIB
+	help
+	  Intel Compute Runtime (NEO) — the OpenCL ICD and Level Zero GPU
+	  driver for Intel integrated and discrete graphics.
+
+	  Required for OpenVINO GPU inference plugin to offload inference
+	  to the Intel iGPU (e.g. Alder Lake-N on the UP7000).
+
+	  Installs pre-built x86_64 binaries from Intel's GitHub releases,
+	  including the OpenCL ICD (libigdrcl.so), Level Zero GPU driver,
+	  and Intel Graphics Compiler (IGC) runtime libs.
+
+	  https://github.com/intel/compute-runtime
+
+comment "intel-compute-runtime requires a glibc toolchain and x86_64"
+	depends on BR2_x86_64
+	depends on !BR2_TOOLCHAIN_USES_GLIBC
