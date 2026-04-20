@@ -236,15 +236,15 @@ Example flash command:
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 IMG="$REPO_ROOT/output/images/up7000.img"
 
-sshpass -p user ssh \
+sshpass -p root ssh \
   -o StrictHostKeyChecking=no \
   -o UserKnownHostsFile=/dev/null \
-  user@192.168.55.1 \
-  'sudo dd of=/dev/mmcblk0 bs=16M iflag=fullblock oflag=direct conv=fsync status=progress' \
+  root@192.168.55.1 \
+  'dd of=/dev/mmcblk0 bs=16M iflag=fullblock oflag=direct conv=fsync' \
   < "$IMG"
 ```
 
-Expected live-USB credentials in our current workflow are `user` / `user`.
+Expected live-USB credentials are `root` / `root`.
 
 ### Sanity checks after a successful eMMC boot
 
@@ -267,8 +267,8 @@ python3 --version
 Use this flow when the UP 7000 is booted from a live USB and the internal eMMC must be backed up or restored from the host.
 
 Assumptions:
-- Target is reachable over SSH at `user@192.168.55.1`
-- Password is `user`
+- Target is reachable over SSH at `root@192.168.55.1`
+- Password is `root`
 - The live USB is the boot device (`/dev/sda` in the examples below)
 - The internal board storage is `/dev/mmcblk0`
 - `sudo -n true` works on the target
@@ -277,8 +277,8 @@ Assumptions:
 Always verify the target disks before writing anything:
 
 ```bash
-sshpass -p user ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  user@192.168.55.1 \
+sshpass -p root ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  root@192.168.55.1 \
   'lsblk -b -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT'
 ```
 
@@ -299,21 +299,21 @@ mkdir -p "$BACKUP_DIR"
 Save partition metadata:
 
 ```bash
-sshpass -p user ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  user@192.168.55.1 \
+sshpass -p root ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  root@192.168.55.1 \
   'sudo sfdisk -d /dev/mmcblk0' > "$BACKUP_DIR/mmcblk0.sfdisk"
 ```
 
 Back up the two eMMC boot partitions:
 
 ```bash
-sshpass -p user ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  user@192.168.55.1 \
+sshpass -p root ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  root@192.168.55.1 \
   'sudo dd if=/dev/mmcblk0boot0 bs=1M status=none | gzip -1 -c' \
   > "$BACKUP_DIR/mmcblk0boot0.img.gz"
 
-sshpass -p user ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  user@192.168.55.1 \
+sshpass -p root ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  root@192.168.55.1 \
   'sudo dd if=/dev/mmcblk0boot1 bs=1M status=none | gzip -1 -c' \
   > "$BACKUP_DIR/mmcblk0boot1.img.gz"
 ```
@@ -321,8 +321,8 @@ sshpass -p user ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null 
 Back up the main eMMC user area:
 
 ```bash
-sshpass -p user ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  user@192.168.55.1 \
+sshpass -p root ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  root@192.168.55.1 \
   'sudo dd if=/dev/mmcblk0 bs=16M iflag=fullblock status=none | gzip -1 -c' \
   > "$BACKUP_DIR/mmcblk0.img.gz"
 ```
@@ -342,8 +342,8 @@ Warning: restore is destructive and overwrites the entire target eMMC and both b
 First, verify the replacement board exposes the expected eMMC target:
 
 ```bash
-sshpass -p user ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  user@192.168.55.1 \
+sshpass -p root ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  root@192.168.55.1 \
   'sudo blockdev --getsize64 /dev/mmcblk0 && lsblk -b -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT /dev/mmcblk0 /dev/mmcblk0boot0 /dev/mmcblk0boot1'
 ```
 
@@ -351,31 +351,31 @@ Restore the main eMMC image:
 
 ```bash
 gzip -dc "$BACKUP_DIR/mmcblk0.img.gz" | \
-  sshpass -p user ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  user@192.168.55.1 \
+  sshpass -p root ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  root@192.168.55.1 \
   'sudo dd of=/dev/mmcblk0 bs=16M oflag=direct conv=fsync status=none'
 ```
 
 Temporarily unlock the boot partitions, restore them, then lock them again:
 
 ```bash
-sshpass -p user ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  user@192.168.55.1 \
+sshpass -p root ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  root@192.168.55.1 \
   'echo 0 | sudo tee /sys/block/mmcblk0boot0/force_ro >/dev/null && \
    echo 0 | sudo tee /sys/block/mmcblk0boot1/force_ro >/dev/null'
 
 gzip -dc "$BACKUP_DIR/mmcblk0boot0.img.gz" | \
-  sshpass -p user ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  user@192.168.55.1 \
+  sshpass -p root ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  root@192.168.55.1 \
   'sudo dd of=/dev/mmcblk0boot0 bs=1M conv=fsync status=none'
 
 gzip -dc "$BACKUP_DIR/mmcblk0boot1.img.gz" | \
-  sshpass -p user ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  user@192.168.55.1 \
+  sshpass -p root ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  root@192.168.55.1 \
   'sudo dd of=/dev/mmcblk0boot1 bs=1M conv=fsync status=none'
 
-sshpass -p user ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  user@192.168.55.1 \
+sshpass -p root ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  root@192.168.55.1 \
   'echo 1 | sudo tee /sys/block/mmcblk0boot0/force_ro >/dev/null && \
    echo 1 | sudo tee /sys/block/mmcblk0boot1/force_ro >/dev/null && \
    sudo sync'
@@ -384,8 +384,8 @@ sshpass -p user ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null 
 Sanity-check the restored partitions:
 
 ```bash
-sshpass -p user ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  user@192.168.55.1 \
+sshpass -p root ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  root@192.168.55.1 \
   'sudo blkid /dev/mmcblk0p1 /dev/mmcblk0p2 /dev/mmcblk0p3; \
    cat /sys/block/mmcblk0boot0/force_ro; \
    cat /sys/block/mmcblk0boot1/force_ro'
@@ -400,8 +400,8 @@ ip: 192.168.55.1
 
 ### Live USB
 run with live usb with NAT on host:
-user: user
-pwd: user
+user: root
+pwd: root
 
 sudo ip route add default via 192.168.55.100
 
