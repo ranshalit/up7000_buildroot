@@ -46,11 +46,13 @@ Important storage note:
 
 ### Build / rebuild
 
-A fresh clone already contains the `buildroot-2024.02.9/` source tree, so no
-separate tarball extraction step is required before running `make`.
+A fresh clone already contains the full `buildroot-2024.02.9/` source tree and the
+pre-built Intel binary downloads (`dl/intel-compute-runtime/`, `dl/intel-ipp/`,
+`dl/openvino-runtime/`, `dl/openvino-demo/`), so no separate tarball extraction or
+download step is required before running `make`.
 
-> **Important**: the defconfig now uses **glibc** (switched from musl for OpenVINO
-> compatibility) and requires `BR2_EXTERNAL` pointing at `br2-external/`.
+> **Important**: the defconfig uses **glibc** (required for OpenVINO pre-built binaries)
+> and requires `BR2_EXTERNAL` pointing at `br2-external/`.
 > A full clean rebuild is required after pulling these changes if you had a
 > previous musl-based output tree.
 
@@ -63,7 +65,7 @@ BR2_EXT="$REPO_ROOT/br2-external"
 # First-time configure (or after defconfig changes)
 make -C "$BUILDROOT" O="$OUTPUT" BR2_EXTERNAL="$BR2_EXT" up7000_defconfig
 
-# Full build (downloads all sources, cross-compiles, generates up7000.img)
+# Full build (downloads standard sources, cross-compiles, generates up7000.img)
 make -C "$BUILDROOT" O="$OUTPUT"
 
 # Rebuild after board/config/package changes
@@ -77,6 +79,41 @@ make -C "$BUILDROOT" O="$OUTPUT"
 make -C "$BUILDROOT" O="$OUTPUT" openvino-demo-dirclean openvino-demo
 make -C "$BUILDROOT" O="$OUTPUT"
 ```
+
+### Offline build (no internet required after clone)
+
+The repo contains everything needed to build on a machine without access to Intel/GitHub
+sources. Standard Buildroot packages (linux kernel, gcc, glibc, opencv4, etc.) are
+downloaded automatically from `sources.buildroot.net` during the build.
+
+The non-standard pre-built Intel binaries that cannot be fetched from standard mirrors
+are committed directly to the repo under `buildroot-2024.02.9/dl/`:
+
+| Directory | Contents | Source (not accessible offline) |
+|---|---|---|
+| `dl/intel-compute-runtime/` | OpenCL ICD, Level Zero, IGC, ocl-icd debs | GitHub / Ubuntu archive |
+| `dl/intel-ipp/` | Intel IPP 2022.3 debs | Intel oneAPI apt repo |
+| `dl/openvino-runtime/` | OpenVINO 2024.4 toolkit tgz | Intel storage |
+| `dl/openvino-demo/` | `person-detection-retail-0013.xml` + `.bin` | Intel OpenVINO storage |
+
+To build on an offline machine:
+
+```bash
+# 1. Transfer the repo via USB from an online machine
+#    (on online machine)
+git clone /path/to/br_2024/ /path/to/usb/br_2024/
+
+# 2. On the offline machine — copy from USB and build
+cp -a /path/to/usb/br_2024/ ~/br_2024/
+cd ~/br_2024/
+
+mkdir output
+make -C buildroot-2024.02.9 O="$(pwd)/output" BR2_EXTERNAL="$(pwd)/br2-external" up7000_defconfig
+make -C buildroot-2024.02.9 O="$(pwd)/output"
+```
+
+> The `up7000_defconfig` step is required on each new machine — it regenerates
+> `output/.config` with correct absolute paths for that machine.
 
 ### Files that matter
 
@@ -127,7 +164,8 @@ make -C "$BUILDROOT" O="$OUTPUT"
 |---|---|
 | `/usr/lib/libopenvino*.so*` | OpenVINO runtime libs + inference plugins (installed directly into `/usr/lib`) |
 | `/usr/lib/plugins.xml` | OpenVINO plugin registry (must live alongside the runtime libs) |
-| `/usr/lib/x86_64-linux-gnu/` | Intel Compute Runtime (OpenCL ICD for iGPU) |
+| `/usr/lib/libOpenCL.so.1*` | Khronos OpenCL ICD loader (dispatches to Intel GPU driver) |
+| `/usr/lib/libigdrcl.so` | Intel Compute Runtime OpenCL ICD implementation |
 | `/etc/OpenCL/vendors/intel.icd` | OpenCL ICD manifest for the Intel GPU |
 | `/usr/bin/openvino-detect` | Detection demo binary |
 | `/usr/share/openvino-demo/models/person-detection-retail-0013.xml` | Model graph (OpenVINO IR) |

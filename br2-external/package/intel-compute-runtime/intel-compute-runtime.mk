@@ -51,7 +51,8 @@ define INTEL_COMPUTE_RUNTIME_EXTRACT_CMDS
 		$(INTEL_COMPUTE_RUNTIME_SOURCE) \
 		intel-level-zero-gpu_1.3.30049.6_amd64.deb \
 		intel-igc-core_$(IGC_VERSION)_amd64.deb \
-		intel-igc-opencl_$(IGC_VERSION)_amd64.deb; \
+		intel-igc-opencl_$(IGC_VERSION)_amd64.deb \
+		ocl-icd-libopencl1_2.2.14-3_amd64.deb; \
 	do \
 		debpath=$(INTEL_COMPUTE_RUNTIME_DL_DIR)/$$deb; \
 		tmpdir=$(@D)/extracted/$$deb.d; \
