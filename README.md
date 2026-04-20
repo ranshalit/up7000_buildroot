@@ -49,15 +49,21 @@ Important storage note:
 A fresh clone already contains the `buildroot-2024.02.9/` source tree, so no
 separate tarball extraction step is required before running `make`.
 
+> **Important**: the defconfig now uses **glibc** (switched from musl for OpenVINO
+> compatibility) and requires `BR2_EXTERNAL` pointing at `br2-external/`.
+> A full clean rebuild is required after pulling these changes if you had a
+> previous musl-based output tree.
+
 ```bash
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 BUILDROOT="$REPO_ROOT/buildroot-2024.02.9"
 OUTPUT="$REPO_ROOT/output"
+BR2_EXT="$REPO_ROOT/br2-external"
 
-# Configure
-make -C "$BUILDROOT" O="$OUTPUT" up7000_defconfig
+# First-time configure (or after defconfig changes)
+make -C "$BUILDROOT" O="$OUTPUT" BR2_EXTERNAL="$BR2_EXT" up7000_defconfig
 
-# Full build
+# Full build (downloads all sources, cross-compiles, generates up7000.img)
 make -C "$BUILDROOT" O="$OUTPUT"
 
 # Rebuild after board/config/package changes
@@ -65,6 +71,10 @@ make -C "$BUILDROOT" O="$OUTPUT"
 
 # Rebuild kernel after changing board/up7000/linux.config
 make -C "$BUILDROOT" O="$OUTPUT" linux-dirclean linux
+make -C "$BUILDROOT" O="$OUTPUT"
+
+# Rebuild only the demo (e.g. after editing detect.cpp)
+make -C "$BUILDROOT" O="$OUTPUT" openvino-demo-dirclean openvino-demo
 make -C "$BUILDROOT" O="$OUTPUT"
 ```
 
@@ -80,6 +90,10 @@ make -C "$BUILDROOT" O="$OUTPUT"
 | `buildroot-2024.02.9/board/up7000/post-image.sh` | Stamps the rootfs PARTUUID into GRUB and genimage output |
 | `buildroot-2024.02.9/board/up7000/rootfs-overlay/etc/network/interfaces` | Static `eth0` config |
 | `buildroot-2024.02.9/board/up7000/rootfs-overlay/etc/ssh/sshd_config` | SSH server policy |
+| `br2-external/` | BR2_EXTERNAL tree with OpenVINO + Intel GPU + demo packages |
+| `br2-external/package/openvino-runtime/` | Pre-built OpenVINO 2024.4 runtime package |
+| `br2-external/package/intel-compute-runtime/` | Pre-built Intel OpenCL GPU runtime (NEO) |
+| `br2-external/package/openvino-demo/` | Person-detection demo C++ app (person-detection-retail-0013) + images |
 
 ### Critical findings / gotchas
 
@@ -94,8 +108,118 @@ make -C "$BUILDROOT" O="$OUTPUT"
 4. **HDMI needs a getty on `tty1`.** Serial-only getty on `ttyS0` makes a successful boot look hung on HDMI-only setups.
 5. **BusyBox init + ifupdown is the current working setup.** Older notes that mention `systemd` or `systemd-networkd` are stale.
 6. **The GRUB message `no suitable video mode found / Booting in blind mode` is not necessarily fatal.** The real blocker we hit was the kernel waiting for the root device.
-7. **`GPT header not at the end of the disk` after writing the image to eMMC is expected.** The image is ~577 MiB and the target eMMC is much larger.
+7. **`GPT header not at the end of the disk` after writing the image to eMMC is expected.** The image is now ~2.1 GiB (64 MiB ESP + 2048 MiB rootfs) and the target eMMC is much larger.
 8. **The on-board Ethernet is Realtek RTL8111H-CG.** Keep `r8169` plus its PHY/MDIO stack available, and include `eudev` so modular hardware can coldplug correctly during boot.
+9. **Full rebuild needed after musl→glibc toolchain switch.** All compiled objects from a previous musl build are incompatible. Clean only the build artefacts — the downloaded sources in `buildroot-2024.02.9/dl/` are preserved so nothing needs to be re-downloaded:
+   ```bash
+   # Wipe compiled output only (keeps downloaded tarballs in buildroot-2024.02.9/dl/)
+   rm -rf output/build output/host output/staging output/target output/images
+   # Then re-configure and rebuild normally (see Build / rebuild section above)
+   ```
+
+---
+
+## OpenVINO + Object-Detection Demo
+
+### What is installed on the target
+
+| Path | Contents |
+|---|---|
+| `/usr/lib/libopenvino*.so*` | OpenVINO runtime libs + inference plugins (installed directly into `/usr/lib`) |
+| `/usr/lib/plugins.xml` | OpenVINO plugin registry (must live alongside the runtime libs) |
+| `/usr/lib/x86_64-linux-gnu/` | Intel Compute Runtime (OpenCL ICD for iGPU) |
+| `/etc/OpenCL/vendors/intel.icd` | OpenCL ICD manifest for the Intel GPU |
+| `/usr/bin/openvino-detect` | Detection demo binary |
+| `/usr/share/openvino-demo/models/person-detection-retail-0013.xml` | Model graph (OpenVINO IR) |
+| `/usr/share/openvino-demo/models/person-detection-retail-0013.bin` | Model weights |
+| `/usr/share/openvino-demo/images/` | 3 sample images (person.jpg, sports.png, electronics.jpg) |
+
+### Running the demo
+
+```bash
+# CPU inference on all bundled sample images (default)
+openvino-detect
+
+# CPU inference on a custom image
+openvino-detect /path/to/photo.jpg
+
+# GPU inference (requires Intel iGPU + compute-runtime installed)
+openvino-detect --device GPU
+
+# Annotated output images
+ls /tmp/ov-demo-out/
+```
+
+### Validation results (UP7000, Alder Lake-N, kernel 6.6.63)
+
+Both CPU and GPU inference validated on device. Commands and expected output:
+
+**CPU:**
+```
+# openvino-detect --device CPU
+Model:  /usr/share/openvino-demo/models/person-detection-retail-0013.xml
+Device: CPU
+Model compiled on CPU. Running inference...
+
+/usr/share/openvino-demo/images/electronics.jpg → /tmp/ov-demo-out/electronics.jpg  (0 persons detected)
+/usr/share/openvino-demo/images/person.jpg → /tmp/ov-demo-out/person.jpg  (0 persons detected)
+/usr/share/openvino-demo/images/sports.png → /tmp/ov-demo-out/sports.png  (2 persons detected)
+  person conf=0.982457 box=(39,85 122x389)
+  person conf=0.846887 box=(497,26 136x374)
+
+Done. Annotated images saved to: /tmp/ov-demo-out
+```
+
+**GPU:**
+```
+# openvino-detect --device GPU
+Model:  /usr/share/openvino-demo/models/person-detection-retail-0013.xml
+Device: GPU
+Model compiled on GPU. Running inference...
+
+/usr/share/openvino-demo/images/electronics.jpg → /tmp/ov-demo-out/electronics.jpg  (0 persons detected)
+/usr/share/openvino-demo/images/person.jpg → /tmp/ov-demo-out/person.jpg  (0 persons detected)
+/usr/share/openvino-demo/images/sports.png → /tmp/ov-demo-out/sports.png  (2 persons detected)
+  person conf=0.98291 box=(39,85 122x389)
+  person conf=0.846191 box=(497,26 136x374)
+
+Done. Annotated images saved to: /tmp/ov-demo-out
+```
+
+Verify GPU firmware loaded correctly before running GPU inference:
+```bash
+dmesg | grep -E "guc|huc"
+# Expected:
+# i915 0000:00:02.0: [drm] GT0: GuC firmware i915/tgl_guc_70.bin version 70.13.1
+# i915 0000:00:02.0: [drm] GT0: HuC firmware i915/tgl_huc.bin version 7.9.3
+```
+
+### Copying annotated images back to the host
+
+```bash
+scp root@192.168.55.1:/tmp/ov-demo-out/*.jpg ./
+```
+
+### GPU inference requirements
+
+For `--device GPU` to work, the Intel iGPU must be visible as `/dev/dri/renderD128`
+and the Compute Runtime (installed by `intel-compute-runtime` package) must have
+loaded its OpenCL ICD. Check with:
+
+```bash
+ls /dev/dri/
+cat /etc/OpenCL/vendors/intel.icd
+```
+
+### Adding your own images or model
+
+- Drop images (JPEG/PNG) into `/usr/share/openvino-demo/images/` on the target,
+  or pass them as arguments to `openvino-detect`.
+- The bundled model (`person-detection-retail-0013`) detects people only.
+  For multi-class detection, rebuild with a different model and update `detect.cpp`
+  for its input/output format.
+
+---
 
 ### Flashing to eMMC from a live environment
 

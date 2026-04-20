@@ -1,4 +1,6 @@
-# Track only the curated source/docs set for this workspace.
+# Track the Buildroot source tree so a fresh clone can build without
+# separately unpacking the tarball. Buildroot's own .gitignore still filters
+# generated artifacts such as output/, dl/, and transient config files.
 /*
 !/.gitignore
 !/README.md
@@ -9,13 +11,7 @@
 !/docs/*.txt
 
 !/buildroot-2024.02.9/
-/buildroot-2024.02.9/*
+!/buildroot-2024.02.9/**
 
-!/buildroot-2024.02.9/configs/
-/buildroot-2024.02.9/configs/*
-!/buildroot-2024.02.9/configs/up7000_defconfig
-
-!/buildroot-2024.02.9/board/
-/buildroot-2024.02.9/board/*
-!/buildroot-2024.02.9/board/up7000/
-!/buildroot-2024.02.9/board/up7000/**
+!/br2-external/
+!/br2-external/**
