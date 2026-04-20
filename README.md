@@ -26,6 +26,7 @@ This repo contains the current in-tree Buildroot board support for the UP7000:
 | Init | BusyBox init |
 | Bootloader | GRUB2 EFI |
 | Rootfs | ext4 |
+| Device manager | eudev |
 | Network | static `eth0 = 192.168.55.1/24` |
 | Installed credentials | `root` / `root` |
 
@@ -45,10 +46,13 @@ Important storage note:
 
 ### Build / rebuild
 
+A fresh clone already contains the `buildroot-2024.02.9/` source tree, so no
+separate tarball extraction step is required before running `make`.
+
 ```bash
-WORKSPACE=/media/ranshal/intel/br_2024
-BUILDROOT=$WORKSPACE/buildroot-2024.02.9
-OUTPUT=$WORKSPACE/output
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+BUILDROOT="$REPO_ROOT/buildroot-2024.02.9"
+OUTPUT="$REPO_ROOT/output"
 
 # Configure
 make -C "$BUILDROOT" O="$OUTPUT" up7000_defconfig
@@ -91,6 +95,7 @@ make -C "$BUILDROOT" O="$OUTPUT"
 5. **BusyBox init + ifupdown is the current working setup.** Older notes that mention `systemd` or `systemd-networkd` are stale.
 6. **The GRUB message `no suitable video mode found / Booting in blind mode` is not necessarily fatal.** The real blocker we hit was the kernel waiting for the root device.
 7. **`GPT header not at the end of the disk` after writing the image to eMMC is expected.** The image is ~577 MiB and the target eMMC is much larger.
+8. **The on-board Ethernet is Realtek RTL8111H-CG.** Keep `r8169` plus its PHY/MDIO stack available, and include `eudev` so modular hardware can coldplug correctly during boot.
 
 ### Flashing to eMMC from a live environment
 
@@ -104,7 +109,8 @@ The reliable workflow is:
 Example flash command:
 
 ```bash
-IMG=/media/ranshal/intel/br_2024/output/images/up7000.img
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+IMG="$REPO_ROOT/output/images/up7000.img"
 
 sshpass -p user ssh \
   -o StrictHostKeyChecking=no \

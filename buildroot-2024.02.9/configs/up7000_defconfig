@@ -46,6 +46,7 @@ BR2_ROOTFS_OVERLAY="board/up7000/rootfs-overlay"
 
 # ─── Init system: BusyBox (simple, proven to work on UP7000) ────────────────
 BR2_INIT_BUSYBOX=y
+BR2_ROOTFS_DEVICE_CREATION_DYNAMIC_EUDEV=y
 
 # ─── System configuration ───────────────────────────────────────────────────
 BR2_TARGET_GENERIC_HOSTNAME="up7000"
@@ -58,6 +59,9 @@ BR2_TARGET_TZ_INFO=y
 BR2_TARGET_LOCALTIME="UTC"
 
 # ─── Network packages ───────────────────────────────────────────────────────
+BR2_PACKAGE_LINUX_FIRMWARE=y
+BR2_PACKAGE_LINUX_FIRMWARE_RTL_8169=y
+BR2_PACKAGE_EUDEV=y
 BR2_PACKAGE_IFUPDOWN_SCRIPTS=y
 BR2_PACKAGE_OPENSSH=y
 BR2_PACKAGE_IPROUTE2=y
