@@ -334,6 +334,70 @@ Notes:
   `.onnx` model via `-m`.
 - Output includes throughput (FPS) and latency statistics (avg/min/max/p50/p90/p99).
 
+### Standalone SDK app (`app/`)
+
+The repo also contains a small standalone OpenVINO example in `app/`. It is **not**
+packaged into the Buildroot image; instead, it is intended to be built against the
+generated SDK in `sdk/`.
+
+#### Build on the host
+
+From the repo root:
+
+```bash
+cmake -S app -B app/build \
+  -DCMAKE_TOOLCHAIN_FILE="$(pwd)/sdk/share/buildroot/toolchainfile.cmake"
+cmake --build app/build
+```
+
+Host-side smoke test using the SDK loader and the model already present in the
+target rootfs staging area:
+
+```bash
+MODEL="$(pwd)/output/target/usr/share/openvino-demo/models/person-detection-retail-0013.xml"
+LOADER="$(pwd)/sdk/x86_64-buildroot-linux-gnu/sysroot/lib/ld-linux-x86-64.so.2"
+LIBPATH="$(pwd)/sdk/x86_64-buildroot-linux-gnu/sysroot/usr/openvino/runtime/lib/intel64:$(pwd)/sdk/x86_64-buildroot-linux-gnu/sysroot/usr/lib:$(pwd)/sdk/x86_64-buildroot-linux-gnu/sysroot/lib"
+
+# List devices seen by the OpenVINO runtime
+"$LOADER" --library-path "$LIBPATH" ./app/build/vino-hello --list-devices
+
+# Single-inference CPU smoke test
+"$LOADER" --library-path "$LIBPATH" ./app/build/vino-hello \
+  --model "$MODEL" \
+  --device CPU
+```
+
+#### Deploy to the device
+
+Copy the built binary to the target over SCP. The current image uses
+`root@192.168.55.1` by default.
+
+```bash
+scp ./app/build/vino-hello root@192.168.55.1:/root/
+```
+
+#### Run on the device
+
+SSH to the board and run `vino-hello` against the model already installed by
+`openvino-demo`:
+
+```bash
+ssh root@192.168.55.1
+
+# CPU
+/root/vino-hello --model /usr/share/openvino-demo/models/person-detection-retail-0013.xml --device CPU
+
+# GPU (real UP7000 hardware only)
+/root/vino-hello --model /usr/share/openvino-demo/models/person-detection-retail-0013.xml --device GPU
+```
+
+Notes:
+
+- `vino-hello` is intentionally minimal: it loads a model, creates zero-filled
+  input tensors, runs one inference, and prints model IO metadata.
+- CPU smoke testing works from the host with the SDK loader as shown above.
+- GPU execution should be validated on real UP7000 hardware.
+
 ### Validation results (UP7000, Alder Lake-N, kernel 6.6.63)
 
 Both CPU and GPU inference validated on device. Commands and expected output:

@@ -15,3 +15,6 @@
 
 !/br2-external/
 !/br2-external/**
+
+!/app/
+!/app/**
