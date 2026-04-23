@@ -119,14 +119,58 @@ qemu-system-x86_64 \
 
 Expected result:
 
-- After the GRUB timeout, the kernel boots on `ttyS0` and prints `Welcome to UP7000 Buildroot`
-  followed by `up7000 login:`.
+- The GRUB menu is visible on the serial terminal and can be controlled from the
+  same QEMU session.
+- After the GRUB timeout, the kernel boots on `ttyS0` and prints
+  `Welcome to UP7000 Buildroot` followed by `up7000 login:`.
 - Login credentials are `root` / `root`.
 
-Notes:
+#### Option 2: Kernel / direct `bzImage` boot
+
+This path skips UEFI and GRUB entirely. It is handy when you only want to test the
+kernel + rootfs bring-up and do not need to validate the EFI boot chain.
+
+```bash
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+KERNEL="$REPO_ROOT/output/images/bzImage"
+ROOTFS="$REPO_ROOT/output/images/rootfs.ext4"
+
+if [ -r /dev/kvm ] && [ -w /dev/kvm ]; then
+  ACCEL=(-accel kvm -cpu host)
+else
+  ACCEL=(-accel tcg)
+fi
+
+qemu-system-x86_64 \
+  "${ACCEL[@]}" \
+  -m 2048 \
+  -smp 4 \
+  -kernel "$KERNEL" \
+  -append 'console=ttyS0,115200n8 console=tty1 root=/dev/sda rw rootwait net.ifnames=0 biosdevname=0' \
+  -drive file="$ROOTFS",format=raw,index=0,media=disk \
+  -device e1000,netdev=n1 \
+  -netdev user,id=n1 \
+  -snapshot \
+  -display none \
+  -serial stdio \
+  -monitor none
+```
+
+Expected result:
+
+- The kernel starts immediately without showing a GRUB menu.
+- Linux boots on `ttyS0` and prints `Welcome to UP7000 Buildroot` followed by
+  `up7000 login:`.
+- Login credentials are `root` / `root`.
+
+Notes for both options:
 
 - On Debian/Ubuntu hosts, the OVMF files usually come from the `ovmf` package.
-- `-snapshot` keeps `output/images/up7000.img` unchanged while you test boot.
+- `-snapshot` keeps the backing image file unchanged while you test boot.
+- The GRUB path is the preferred one when you want to validate EFI + GRUB + Linux on
+  the same serial console.
+- The direct-kernel path is faster, but it does **not** validate the bootloader or ESP
+  layout.
 - This validates the generic x86_64 boot flow and userspace prompt only. QEMU does **not**
   emulate the UP7000 Intel iGPU, so GPU/OpenVINO validation still requires real hardware.
 

@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
-project(vino_hello CXX)
+project(openvino_apps CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 if(NOT DEFINED OpenVINO_DIR AND DEFINED CMAKE_SYSROOT)
     set(OpenVINO_DIR
@@ -11,10 +12,11 @@ if(NOT DEFINED OpenVINO_DIR AND DEFINED CMAKE_SYSROOT)
         CACHE PATH "Path to OpenVINOConfig.cmake")
 endif()
 
-find_package(OpenVINO REQUIRED COMPONENTS Runtime)
+if(NOT DEFINED OpenCV_DIR AND DEFINED CMAKE_SYSROOT)
+    set(OpenCV_DIR
+        "${CMAKE_SYSROOT}/usr/lib/cmake/opencv4"
+        CACHE PATH "Path to OpenCVConfig.cmake")
+endif()
 
-add_executable(vino-hello
-    src/main.cpp
-)
-
-target_link_libraries(vino-hello PRIVATE openvino::runtime)
+add_subdirectory(hello)
+add_subdirectory(detection)
