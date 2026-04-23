@@ -80,6 +80,56 @@ make -C "$BUILDROOT" O="$OUTPUT" openvino-demo-dirclean openvino-demo
 make -C "$BUILDROOT" O="$OUTPUT"
 ```
 
+### Run under QEMU
+
+Use **UEFI firmware** when booting this image in QEMU: `up7000.img` contains a GRUB EFI
+system partition, not a legacy BIOS boot sector. The command below runs headless on the
+serial console, preserves the original disk image with `-snapshot`, and reaches the
+standard `up7000 login:` prompt.
+
+```bash
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+IMG="$REPO_ROOT/output/images/up7000.img"
+OVMF_CODE=/usr/share/OVMF/OVMF_CODE.fd
+OVMF_VARS_TEMPLATE=/usr/share/OVMF/OVMF_VARS.fd
+OVMF_VARS="$(mktemp)"
+cp "$OVMF_VARS_TEMPLATE" "$OVMF_VARS"
+trap 'rm -f "$OVMF_VARS"' EXIT
+
+if [ -r /dev/kvm ] && [ -w /dev/kvm ]; then
+  ACCEL=(-accel kvm -cpu host)
+else
+  ACCEL=(-accel tcg)
+fi
+
+qemu-system-x86_64 \
+  "${ACCEL[@]}" \
+  -m 2048 \
+  -smp 4 \
+  -drive if=pflash,format=raw,readonly=on,file="$OVMF_CODE" \
+  -drive if=pflash,format=raw,file="$OVMF_VARS" \
+  -drive file="$IMG",format=raw,index=0,media=disk \
+  -device e1000,netdev=n1 \
+  -netdev user,id=n1 \
+  -snapshot \
+  -display none \
+  -serial stdio \
+  -monitor none
+```
+
+Expected result:
+
+- After the GRUB timeout, the kernel boots on `ttyS0` and prints `Welcome to UP7000 Buildroot`
+  followed by `up7000 login:`.
+- Login credentials are `root` / `root`.
+
+Notes:
+
+- On Debian/Ubuntu hosts, the OVMF files usually come from the `ovmf` package.
+- `-snapshot` keeps `output/images/up7000.img` unchanged while you test boot.
+- This validates the generic x86_64 boot flow and userspace prompt only. QEMU does **not**
+  emulate the UP7000 Intel iGPU, so GPU/OpenVINO validation still requires real hardware.
+
 ### Offline build (no internet required after clone)
 
 A fully offline build requires two things: the git repository and a tarball of
@@ -162,6 +212,7 @@ make -C buildroot-2024.02.9 O="$(pwd)/output"
 | `br2-external/package/openvino-runtime/` | Pre-built OpenVINO 2024.4 runtime package |
 | `br2-external/package/intel-compute-runtime/` | Pre-built Intel OpenCL GPU runtime (NEO) |
 | `br2-external/package/openvino-demo/` | Person-detection demo C++ app (person-detection-retail-0013) + images |
+| `br2-external/package/openvino-benchmark/` | Benchmark app that links against the packaged OpenVINO runtime |
 
 ### Critical findings / gotchas
 
@@ -199,6 +250,7 @@ make -C buildroot-2024.02.9 O="$(pwd)/output"
 | `/usr/lib/libigdrcl.so` | Intel Compute Runtime OpenCL ICD implementation |
 | `/etc/OpenCL/vendors/intel.icd` | OpenCL ICD manifest for the Intel GPU |
 | `/usr/bin/openvino-detect` | Detection demo binary |
+| `/usr/bin/benchmark_app` | Benchmark binary for OpenVINO models |
 | `/usr/share/openvino-demo/models/person-detection-retail-0013.xml` | Model graph (OpenVINO IR) |
 | `/usr/share/openvino-demo/models/person-detection-retail-0013.bin` | Model weights |
 | `/usr/share/openvino-demo/images/` | 3 sample images (person.jpg, sports.png, electronics.jpg) |
@@ -218,6 +270,69 @@ openvino-detect --device GPU
 # Annotated output images
 ls /tmp/ov-demo-out/
 ```
+
+### Running the benchmark app
+
+`benchmark_app` is a small repo-local wrapper around the packaged OpenVINO runtime.
+It does **not** install its own model assets; on the default UP7000 image you can
+reuse the model already installed by `openvino-demo`.
+
+Common model path used in the examples below:
+
+```bash
+# Show command-line help
+benchmark_app --help
+MODEL=/usr/share/openvino-demo/models/person-detection-retail-0013.xml
+```
+
+#### CPU benchmark
+
+```bash
+benchmark_app \
+  -m "$MODEL" \
+  -d CPU \
+  -nwarmup 5 \
+  -niter 100
+```
+
+#### GPU benchmark
+
+```bash
+benchmark_app \
+  -m "$MODEL" \
+  -d GPU \
+  -nwarmup 5 \
+  -niter 100
+```
+
+#### Optional tuning
+
+```bash
+# Run multiple asynchronous requests
+benchmark_app \
+  -m "$MODEL" \
+  -d CPU \
+  -nireq 4 \
+  -async \
+  -niter 200
+
+# AUTO device selection
+benchmark_app \
+  -m "$MODEL" \
+  -d AUTO \
+  -nwarmup 5 \
+  -niter 100
+```
+
+Notes:
+
+- CPU benchmarking works in QEMU for a basic functional smoke test, but the
+  numbers are only representative on real hardware.
+- GPU benchmarking requires real UP7000 hardware with the Intel iGPU and compute
+  runtime stack active.
+- If you want to benchmark a different network, pass any supported `.xml` IR or
+  `.onnx` model via `-m`.
+- Output includes throughput (FPS) and latency statistics (avg/min/max/p50/p90/p99).
 
 ### Validation results (UP7000, Alder Lake-N, kernel 6.6.63)
 
