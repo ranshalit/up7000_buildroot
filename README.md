@@ -82,10 +82,19 @@ make -C "$BUILDROOT" O="$OUTPUT"
 
 ### Run under QEMU
 
-Use **UEFI firmware** when booting this image in QEMU: `up7000.img` contains a GRUB EFI
-system partition, not a legacy BIOS boot sector. The command below runs headless on the
-serial console, preserves the original disk image with `-snapshot`, and reaches the
-standard `up7000 login:` prompt.
+Two QEMU boot paths are supported:
+
+1. **GRUB / full-image boot**: boots `up7000.img` through UEFI + GRUB and exercises the
+   same disk-image flow used on real hardware.
+2. **Kernel / direct boot**: boots `bzImage` directly and mounts `rootfs.ext4` as the
+   guest disk, which is useful for a faster kernel/userspace smoke test.
+
+#### Option 1: GRUB / UEFI boot
+
+Use **UEFI firmware** here: `up7000.img` contains a GRUB EFI system partition, not a
+legacy BIOS boot sector. The command below runs headless on the serial console,
+preserves the original disk image with `-snapshot`, and keeps the entire boot flow on
+the same terminal: GRUB, kernel boot, and the final `up7000 login:` prompt.
 
 ```bash
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"

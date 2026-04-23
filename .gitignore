@@ -18,3 +18,5 @@
 
 !/app/
 !/app/**
+/app/build/
+/app/build/**
