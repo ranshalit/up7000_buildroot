@@ -387,11 +387,16 @@ Notes:
   `.onnx` model via `-m`.
 - Output includes throughput (FPS) and latency statistics (avg/min/max/p50/p90/p99).
 
-### Standalone SDK app (`app/`)
+### Standalone SDK apps (`app/`)
 
-The repo also contains a small standalone OpenVINO example in `app/`. It is **not**
-packaged into the Buildroot image; instead, it is intended to be built against the
-generated SDK in `sdk/`.
+The repo contains two standalone OpenVINO examples under `app/`. They are **not**
+packaged into the Buildroot image; instead, they are built against the generated
+SDK in `sdk/`.
+
+| App | Path | Purpose |
+|---|---|---|
+| `vino-hello` | `app/hello/` | Minimal single-inference smoke test |
+| `vino-detect` | `app/detection/` | Image-based person detector, similar to the packaged `openvino-detect` |
 
 #### Build on the host
 
@@ -403,52 +408,78 @@ cmake -S app -B app/build \
 cmake --build app/build
 ```
 
-Host-side smoke test using the SDK loader and the model already present in the
-target rootfs staging area:
+The resulting binaries are:
+
+```bash
+./app/build/bin/vino-hello
+./app/build/bin/vino-detect
+```
+
+Host-side validation using the SDK loader and the staged target assets:
 
 ```bash
 MODEL="$(pwd)/output/target/usr/share/openvino-demo/models/person-detection-retail-0013.xml"
+IMAGES_DIR="$(pwd)/output/target/usr/share/openvino-demo/images"
 LOADER="$(pwd)/sdk/x86_64-buildroot-linux-gnu/sysroot/lib/ld-linux-x86-64.so.2"
 LIBPATH="$(pwd)/sdk/x86_64-buildroot-linux-gnu/sysroot/usr/openvino/runtime/lib/intel64:$(pwd)/sdk/x86_64-buildroot-linux-gnu/sysroot/usr/lib:$(pwd)/sdk/x86_64-buildroot-linux-gnu/sysroot/lib"
 
-# List devices seen by the OpenVINO runtime
-"$LOADER" --library-path "$LIBPATH" ./app/build/vino-hello --list-devices
+# Device enumeration
+"$LOADER" --library-path "$LIBPATH" ./app/build/bin/vino-hello --list-devices
 
 # Single-inference CPU smoke test
-"$LOADER" --library-path "$LIBPATH" ./app/build/vino-hello \
+"$LOADER" --library-path "$LIBPATH" ./app/build/bin/vino-hello \
   --model "$MODEL" \
   --device CPU
+
+# Detection test on a staged sample image
+"$LOADER" --library-path "$LIBPATH" ./app/build/bin/vino-detect \
+  --model "$MODEL" \
+  "$IMAGES_DIR/sports.png"
 ```
 
 #### Deploy to the device
 
-Copy the built binary to the target over SCP. The current image uses
+Copy the built binaries to the target over SCP. The current image uses
 `root@192.168.55.1` by default.
 
 ```bash
-scp ./app/build/vino-hello root@192.168.55.1:/root/
+ssh root@192.168.55.1 'mkdir -p /app'
+scp ./app/build/bin/vino-hello ./app/build/bin/vino-detect root@192.168.55.1:/app/
 ```
 
 #### Run on the device
 
-SSH to the board and run `vino-hello` against the model already installed by
-`openvino-demo`:
+SSH to the board and run the binaries against the model and sample images already
+installed by `openvino-demo`:
 
 ```bash
 ssh root@192.168.55.1
 
-# CPU
-/root/vino-hello --model /usr/share/openvino-demo/models/person-detection-retail-0013.xml --device CPU
+# Minimal smoke test on CPU
+/app/vino-hello --model /usr/share/openvino-demo/models/person-detection-retail-0013.xml --device CPU
 
-# GPU (real UP7000 hardware only)
-/root/vino-hello --model /usr/share/openvino-demo/models/person-detection-retail-0013.xml --device GPU
+# Minimal smoke test on GPU (real UP7000 hardware)
+/app/vino-hello --model /usr/share/openvino-demo/models/person-detection-retail-0013.xml --device GPU
+
+# Image detection on all packaged sample images on CPU
+/app/vino-detect --device CPU
+
+# Image detection on all packaged sample images on GPU (real UP7000 hardware)
+/app/vino-detect --device GPU
+
+# Or run only selected images on CPU
+/app/vino-detect --device CPU /usr/share/openvino-demo/images/sports.png
+
+# Or run only selected images on GPU
+/app/vino-detect --device GPU /usr/share/openvino-demo/images/sports.png
 ```
 
 Notes:
 
-- `vino-hello` is intentionally minimal: it loads a model, creates zero-filled
-  input tensors, runs one inference, and prints model IO metadata.
-- CPU smoke testing works from the host with the SDK loader as shown above.
+- `vino-hello` remains the minimal SDK smoke sample.
+- `vino-detect` mirrors the known-good packaged detector behavior and writes
+  annotated images to `/tmp/vino-detect-out`.
+- CPU validation works both on the host with the SDK loader and on the UP7000.
 - GPU execution should be validated on real UP7000 hardware.
 
 ### Validation results (UP7000, Alder Lake-N, kernel 6.6.63)
