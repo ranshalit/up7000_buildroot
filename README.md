@@ -412,7 +412,9 @@ make -C buildroot-2024.02.9 O="$(pwd)/output" sdk
 # Re-create sdk/ from the generated tarball
 rm -rf sdk
 mkdir sdk
-tar -xzf output/images/x86_64-buildroot-linux-gnu_sdk-buildroot.tar.gz -C sdk
+tar -xzf output/images/x86_64-buildroot-linux-gnu_sdk-buildroot.tar.gz \
+  --strip-components=1 \
+  -C sdk
 ./sdk/relocate-sdk.sh
 ```
 
@@ -421,6 +423,32 @@ If `output/.config` is missing (for example on a new machine), run
 
 ```bash
 make -C buildroot-2024.02.9 O="$(pwd)/output" BR2_EXTERNAL="$(pwd)/br2-external" up7000_defconfig
+```
+
+#### Python in the SDK
+
+The generated SDK now includes:
+
+- host-side Python tooling in `sdk/bin/`
+- `sdk/environment-setup` for SDK-aware host builds
+- target-side Python runtime in the image as `/usr/bin/python3`
+- target-side Python headers and `libpython` in the SDK sysroot for
+  cross-building native extensions
+
+From the repo root:
+
+```bash
+. ./sdk/environment-setup
+python3 --version
+python3.11-config --includes
+```
+
+The target Python development files are exported into the SDK sysroot here:
+
+```text
+sdk/x86_64-buildroot-linux-gnu/sysroot/usr/include/python3.11/
+sdk/x86_64-buildroot-linux-gnu/sysroot/usr/lib/libpython3.11.so
+sdk/x86_64-buildroot-linux-gnu/sysroot/usr/bin/python3.11-config
 ```
 
 #### Build on the host

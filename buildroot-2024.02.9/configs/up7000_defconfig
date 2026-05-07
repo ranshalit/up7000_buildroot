@@ -74,6 +74,17 @@ BR2_PACKAGE_STRACE=y
 
 # Host genimage tool (required by post-image.sh to create GPT disk image)
 BR2_PACKAGE_HOST_GENIMAGE=y
+BR2_PACKAGE_HOST_ENVIRONMENT_SETUP=y
+
+# ─── Python runtime/dev support for SDK + target ────────────────────────────
+BR2_PACKAGE_PYTHON3=y
+BR2_PACKAGE_PYTHON3_BZIP2=y
+BR2_PACKAGE_PYTHON3_READLINE=y
+BR2_PACKAGE_PYTHON3_SSL=y
+BR2_PACKAGE_PYTHON3_SQLITE=y
+BR2_PACKAGE_PYTHON3_PYEXPAT=y
+BR2_PACKAGE_PYTHON3_XZ=y
+BR2_PACKAGE_PYTHON3_ZLIB=y
 
 # ─── BR2_EXTERNAL: UP7000 extras (OpenVINO, Intel GPU runtime, demo) ─────────
 # Pass BR2_EXTERNAL="$(TOPDIR)/../br2-external" on the make command line;
