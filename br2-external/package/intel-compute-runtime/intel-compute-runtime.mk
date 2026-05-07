@@ -44,7 +44,9 @@ INTEL_COMPUTE_RUNTIME_INSTALL_TARGET  = YES
 
 INTEL_COMPUTE_RUNTIME_DEPENDENCIES = intel-gmmlib
 
-# ── Custom extraction: unpack each .deb (ar archive containing data.tar.*) ───
+# ── Custom extraction: unpack each .deb using dpkg-deb ───────────────────────
+# dpkg-deb -x handles all data.tar compression formats (gz, xz, zst) and is
+# compatible with Ubuntu 18.04 where plain tar lacks zstd support.
 define INTEL_COMPUTE_RUNTIME_EXTRACT_CMDS
 	mkdir -p $(@D)/extracted
 	for deb in \
@@ -55,12 +57,7 @@ define INTEL_COMPUTE_RUNTIME_EXTRACT_CMDS
 		ocl-icd-libopencl1_2.2.14-3_amd64.deb; \
 	do \
 		debpath=$(INTEL_COMPUTE_RUNTIME_DL_DIR)/$$deb; \
-		tmpdir=$(@D)/extracted/$$deb.d; \
-		mkdir -p $$tmpdir; \
-		(cd $$tmpdir && ar x $$debpath); \
-		for data in $$tmpdir/data.tar.*; do \
-			tar -C $(@D)/extracted -xf $$data; \
-		done; \
+		dpkg-deb -x $$debpath $(@D)/extracted; \
 	done
 endef
 

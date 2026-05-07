@@ -30,7 +30,9 @@ INTEL_IPP_REDISTRIBUTE  = NO
 INTEL_IPP_INSTALL_STAGING = YES
 INTEL_IPP_INSTALL_TARGET  = YES
 
-# ── Custom extraction: unpack both .deb files (ar archive + data.tar.*) ───────
+# ── Custom extraction: unpack both .deb files using dpkg-deb ─────────────────
+# dpkg-deb -x handles all data.tar compression formats (gz, xz, zst) and is
+# compatible with Ubuntu 18.04 where plain tar lacks zstd support.
 define INTEL_IPP_EXTRACT_CMDS
 	mkdir -p $(@D)/extracted
 	for deb in \
@@ -38,12 +40,7 @@ define INTEL_IPP_EXTRACT_CMDS
 		intel-oneapi-ipp-devel-$(INTEL_IPP_SHORT)-$(INTEL_IPP_VERSION)_amd64.deb; \
 	do \
 		debpath=$(INTEL_IPP_DL_DIR)/$$deb; \
-		tmpdir=$(@D)/extracted/$$deb.d; \
-		mkdir -p $$tmpdir; \
-		(cd $$tmpdir && ar x $$debpath); \
-		for data in $$tmpdir/data.tar.*; do \
-			tar -C $(@D)/extracted -xf $$data; \
-		done; \
+		dpkg-deb -x $$debpath $(@D)/extracted; \
 	done
 endef
 
